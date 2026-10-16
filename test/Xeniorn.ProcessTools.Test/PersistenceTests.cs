@@ -132,15 +132,14 @@ public sealed class PersistenceTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Times_are_stored_as_utc_whatever_kind_they_arrive_in()
+    public async Task Times_are_stored_as_utc_and_a_local_time_is_converted()
     {
         var utc = new DateTime(2026, 3, 29, 1, 30, 0, DateTimeKind.Utc);   // an instant near a DST change
         var local = utc.ToLocalTime();
-        var unspecified = DateTime.SpecifyKind(utc, DateTimeKind.Unspecified);
 
         await using (var db = _factory.CreateDbContext())
         {
-            foreach (var (pid, time) in new[] { (1, utc), (2, local), (3, unspecified) })
+            foreach (var (pid, time) in new[] { (1, utc), (2, local) })
                 db.TrackedProcesses.Add(new TrackedProcessEntity { ProcessId = pid, StartTimeUtc = time, Name = "t", FirstSeenUtc = time, LastSeenUtc = time });
             await db.SaveChangesAsync();
         }
@@ -148,14 +147,41 @@ public sealed class PersistenceTests : IAsyncLifetime
         await using var read = _factory.CreateDbContext();
         var rows = await read.TrackedProcesses.OrderBy(p => p.ProcessId).ToListAsync();
         Assert.All(rows, r => Assert.Equal(DateTimeKind.Utc, r.StartTimeUtc.Kind));
-        Assert.All(rows, r => Assert.Equal(utc, r.StartTimeUtc));   // local converted, unspecified taken as UTC, nothing shifted
+        Assert.All(rows, r => Assert.Equal(utc, r.StartTimeUtc));   // the local one is the same instant, nothing shifted
 
         // the file holds UTC text, readable by any tool
         var text = await read.Database.SqlQueryRaw<string>("SELECT StartTimeUtc AS Value FROM tracked_process WHERE ProcessId = 2").SingleAsync();
         Assert.StartsWith("2026-03-29 01:30:00", text);
 
         // queries with a local-kind bound compare as the same instant
-        Assert.Equal(3, await read.TrackedProcesses.CountAsync(p => p.StartTimeUtc >= local.AddMinutes(-1) && p.StartTimeUtc <= local.AddMinutes(1)));
+        Assert.Equal(2, await read.TrackedProcesses.CountAsync(p => p.StartTimeUtc >= local.AddMinutes(-1) && p.StartTimeUtc <= local.AddMinutes(1)));
+    }
+
+    [Fact]
+    public async Task A_time_of_unspecified_kind_is_refused_and_nothing_is_stored()
+    {
+        var unspecified = new DateTime(2026, 3, 29, 1, 30, 0, DateTimeKind.Unspecified);
+
+        await using (var db = _factory.CreateDbContext())
+        {
+            db.TrackedProcesses.Add(new TrackedProcessEntity { ProcessId = 1, StartTimeUtc = unspecified, Name = "t", FirstSeenUtc = DateTime.UtcNow, LastSeenUtc = DateTime.UtcNow });
+            var error = await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+            Assert.Contains("unspecified kind", error.InnerException!.Message);
+        }
+
+        // an unset field (default(DateTime) is unspecified) is caught the same way
+        await using (var db = _factory.CreateDbContext())
+        {
+            db.TrackedProcesses.Add(new TrackedProcessEntity { ProcessId = 2, StartTimeUtc = DateTime.UtcNow, Name = "t" });
+            await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        }
+
+        // so is a query bound
+        await using (var db = _factory.CreateDbContext())
+            await Assert.ThrowsAnyAsync<Exception>(() => db.TrackedProcesses.CountAsync(p => p.StartTimeUtc >= unspecified));
+
+        await using var read = _factory.CreateDbContext();
+        Assert.Equal(0, await read.TrackedProcesses.CountAsync());
     }
 
     [Fact]

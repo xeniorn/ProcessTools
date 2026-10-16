@@ -169,7 +169,7 @@ PowerShell 7+**, on Windows and Linux, and use the same metric and aggregation n
 - **A failing sink never stops the monitoring**: the event is logged and dropped.
 - **Exit codes**: Windows keeps its own handle on a process from the moment tracking starts, so the exit code is available after
   the process is gone. On Linux only a parent can read an exit code, so it is null for processes you did not start.
-- All times are UTC (`...Utc` names, `DateTimeKind.Utc`, UTC text in SQLite, `Z` in file names and script output). A value of unspecified kind arriving at the database is taken to be UTC, a local one is converted.
+- All times are UTC (`...Utc` names, `DateTimeKind.Utc`, UTC text in SQLite, `Z` in file names and script output). The SQLite model stores UTC values as they are, converts a local `DateTime`, and **refuses one of unspecified kind** (including an unset `default(DateTime)`), because it cannot be told which it is.
 
 ## Build, test, release
 

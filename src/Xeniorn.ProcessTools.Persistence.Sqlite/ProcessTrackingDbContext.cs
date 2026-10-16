@@ -108,8 +108,9 @@ internal sealed class ProcessTrackingDbContextDesignTimeFactory : IDesignTimeDbC
 }
 
 /// <summary>
-/// DateTime stored as UTC text, read back as Kind=Utc. Every time in this model is UTC by contract, so a value of unspecified
-/// kind is taken to already be UTC (reinterpreting it as local time would silently shift it); a local value is converted.
+/// DateTime stored as UTC text, read back as Kind=Utc. Every time in this model is UTC by contract: a UTC value is stored as is,
+/// a local one is converted, and a value of <b>unspecified</b> kind is <b>refused</b> (it cannot be told whether it is UTC or local,
+/// and guessing would silently shift it; an unset <c>default(DateTime)</c> is refused the same way).
 /// </summary>
 internal sealed class UtcDateTimeConverter() : ValueConverter<DateTime, DateTime>(
     v => ToUtc(v),
@@ -117,8 +118,9 @@ internal sealed class UtcDateTimeConverter() : ValueConverter<DateTime, DateTime
 {
     internal static DateTime ToUtc(DateTime v) => v.Kind switch
     {
+        DateTimeKind.Utc => v,
         DateTimeKind.Local => v.ToUniversalTime(),
-        _ => DateTime.SpecifyKind(v, DateTimeKind.Utc),
+        _ => throw new ArgumentException($"A DateTime of unspecified kind ({v:O}) was given for a UTC column. Every time in this model must be UTC (DateTimeKind.Utc); an unset value (default(DateTime)) lands here too."),
     };
 }
 
