@@ -314,7 +314,7 @@ public sealed class ProcessTracker
 
     private async Task<(string Path, DumpResult Result)> TakeDumpAsync(ProcessInfo info, DumpOptions dump, DumpKind kind, DateTime now, DumpRule rule)
     {
-        var fileName = $"{Sanitize(info.Name)}_{info.ProcessId}_{now:yyyyMMdd_HHmmss}_{rule.Metric}.dmp";
+        var fileName = $"{Sanitize(info.Name)}_{info.ProcessId}_{now:yyyyMMdd_HHmmss}Z_{rule.Metric}.dmp";
         var path = System.IO.Path.Combine(dump.Directory, fileName);
 
         if (kind == DumpKind.Full && !dump.AllowFull)

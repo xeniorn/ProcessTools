@@ -132,6 +132,33 @@ public sealed class PersistenceTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Times_are_stored_as_utc_whatever_kind_they_arrive_in()
+    {
+        var utc = new DateTime(2026, 3, 29, 1, 30, 0, DateTimeKind.Utc);   // an instant near a DST change
+        var local = utc.ToLocalTime();
+        var unspecified = DateTime.SpecifyKind(utc, DateTimeKind.Unspecified);
+
+        await using (var db = _factory.CreateDbContext())
+        {
+            foreach (var (pid, time) in new[] { (1, utc), (2, local), (3, unspecified) })
+                db.TrackedProcesses.Add(new TrackedProcessEntity { ProcessId = pid, StartTimeUtc = time, Name = "t", FirstSeenUtc = time, LastSeenUtc = time });
+            await db.SaveChangesAsync();
+        }
+
+        await using var read = _factory.CreateDbContext();
+        var rows = await read.TrackedProcesses.OrderBy(p => p.ProcessId).ToListAsync();
+        Assert.All(rows, r => Assert.Equal(DateTimeKind.Utc, r.StartTimeUtc.Kind));
+        Assert.All(rows, r => Assert.Equal(utc, r.StartTimeUtc));   // local converted, unspecified taken as UTC, nothing shifted
+
+        // the file holds UTC text, readable by any tool
+        var text = await read.Database.SqlQueryRaw<string>("SELECT StartTimeUtc AS Value FROM tracked_process WHERE ProcessId = 2").SingleAsync();
+        Assert.StartsWith("2026-03-29 01:30:00", text);
+
+        // queries with a local-kind bound compare as the same instant
+        Assert.Equal(3, await read.TrackedProcesses.CountAsync(p => p.StartTimeUtc >= local.AddMinutes(-1) && p.StartTimeUtc <= local.AddMinutes(1)));
+    }
+
+    [Fact]
     public void Raw_values_round_trip_and_have_a_fixed_layout()
     {
         double[] values = [1.5, -2, double.MaxValue, 0];

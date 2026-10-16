@@ -51,14 +51,14 @@ if ($Metric -contains 'CpuPercent') {
 $rows = foreach ($p in $processes) {
     $values = Read-ProcessMetrics -Process $p -Metric $Metric -ProcessTable $table -State $states[$p.Id]
     if ($null -eq $values) { continue }
-    $row = [ordered]@{ Id = $p.Id; Name = $p.ProcessName; Started = $(try { $p.StartTime.ToUniversalTime() } catch { $null }) }
+    $row = [ordered]@{ Id = $p.Id; Name = $p.ProcessName; StartedUtc = $(try { $p.StartTime.ToUniversalTime() } catch { $null }) }
     foreach ($m in $Metric) { $row[$m] = if ($values.Contains($m)) { $values[$m] } else { $null } }
     [pscustomobject]$row
 }
 
 if ($Raw) { $rows; return }
 $rows | ForEach-Object {
-    $display = [ordered]@{ Id = $_.Id; Name = $_.Name; Started = $_.Started }
+    $display = [ordered]@{ Id = $_.Id; Name = $_.Name; StartedUtc = $_.StartedUtc }
     foreach ($m in $Metric) { $display[$m] = if ($null -ne $_.$m) { Format-Metric $m $_.$m } else { 'n/a' } }
     [pscustomobject]$display
 } | Format-Table -AutoSize

@@ -2,7 +2,7 @@
 .SYNOPSIS
     Track chosen metrics of chosen processes over time: sample every few seconds, summarise every period.
 .DESCRIPTION
-    Samples at -IntervalSeconds and, every -PeriodSeconds, writes one row per process and metric with the requested
+    Samples at -IntervalSeconds and, every -PeriodSeconds, writes one row per process and metric (all times UTC, console lines marked Z) with the requested
     aggregations (Min, Max, Mean, Median, StdDev, Rms, Last), optionally with the raw samples of the period.
     Several instances of the same program are tracked independently (key: PID + start time); instances that start
     later are picked up; start and exit are reported. Output goes to the console and optionally to a CSV file.
@@ -55,14 +55,14 @@ function Write-Period {
         if ($vals.Count -eq 0) { continue }
         $row = [ordered]@{
             PeriodStartUtc = $T.First.ToString('o'); PeriodEndUtc = $T.Last.ToString('o'); Id = $T.Id; Name = $T.Name
-            Started = $T.Started.ToString('o'); Metric = $m; Count = $vals.Count; Partial = $Partial
+            StartedUtc = $T.Started.ToString('o'); Metric = $m; Count = $vals.Count; Partial = $Partial
         }
         foreach ($a in $Aggregate) { $row[$a] = Get-Aggregate -Values $vals -Aggregation $a }
         if ($IncludeRaw) { $row['Raw'] = ($vals | ForEach-Object { $_.ToString([Globalization.CultureInfo]::InvariantCulture) }) -join ';' }
         [pscustomobject]$row
     }
     foreach ($r in $rows) {
-        $line = "[{0:HH:mm:ss}] {1}#{2} {3}{4}: " -f $r.PeriodEndUtc.Substring(11, 8), $r.Name, $r.Id, $r.Metric, $(if ($r.Partial) { ' (partial)' } else { '' })
+        $line = "[{0}Z] {1}#{2} {3}{4}: " -f $r.PeriodEndUtc.Substring(11, 8), $r.Name, $r.Id, $r.Metric, $(if ($r.Partial) { ' (partial)' } else { '' })
         $line += ($Aggregate | ForEach-Object { "$_=$(Format-Metric $r.Metric $r.$_)" }) -join '  '
         Write-Host $line
     }
@@ -92,7 +92,7 @@ try {
                 $t = @{ Id = $p.Id; Name = $p.ProcessName; Started = $start; Process = $p; State = @{}; Window = @{}; First = $null; Last = $null }
                 foreach ($m in $Metric) { $t.Window[$m] = (New-Object 'System.Collections.Generic.List[double]') }
                 $tracked[$key] = $t
-                Write-Host ("[{0:HH:mm:ss}] started: {1}#{2} (since {3:u}){4}" -f $now, $p.ProcessName, $p.Id, $start, $(if ($round -eq 0) { ' [already running]' } else { '' }))
+                Write-Host ("[{0:HH:mm:ss}Z] started: {1}#{2} (since {3:u}){4}" -f $now, $p.ProcessName, $p.Id, $start, $(if ($round -eq 0) { ' [already running]' } else { '' }))
             }
         }
 
@@ -101,7 +101,7 @@ try {
             if (-not $liveKeys.ContainsKey($key)) {
                 if ($t.First) { Write-Period -T $t -Partial $true }
                 $code = try { $t.Process.Refresh(); if ($t.Process.HasExited) { $t.Process.ExitCode } else { $null } } catch { $null }
-                Write-Host ("[{0:HH:mm:ss}] ended: {1}#{2}, exit code {3}" -f $now, $t.Name, $t.Id, $(if ($null -ne $code) { $code } else { 'unknown' }))
+                Write-Host ("[{0:HH:mm:ss}Z] ended: {1}#{2}, exit code {3}" -f $now, $t.Name, $t.Id, $(if ($null -ne $code) { $code } else { 'unknown' }))
                 $tracked.Remove($key)
                 continue
             }

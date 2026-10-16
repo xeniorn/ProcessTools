@@ -107,12 +107,22 @@ internal sealed class ProcessTrackingDbContextDesignTimeFactory : IDesignTimeDbC
         new(ProcessTrackingDbContext.CreateOptions<ProcessTrackingDbContext>("design-time.sqlite"));
 }
 
-/// <summary>DateTime stored as UTC text, read back as Kind=Utc.</summary>
+/// <summary>
+/// DateTime stored as UTC text, read back as Kind=Utc. Every time in this model is UTC by contract, so a value of unspecified
+/// kind is taken to already be UTC (reinterpreting it as local time would silently shift it); a local value is converted.
+/// </summary>
 internal sealed class UtcDateTimeConverter() : ValueConverter<DateTime, DateTime>(
-    v => v.Kind == DateTimeKind.Utc ? v : v.ToUniversalTime(),
-    v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+    v => ToUtc(v),
+    v => DateTime.SpecifyKind(v, DateTimeKind.Utc))
+{
+    internal static DateTime ToUtc(DateTime v) => v.Kind switch
+    {
+        DateTimeKind.Local => v.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(v, DateTimeKind.Utc),
+    };
+}
 
 /// <summary>Nullable counterpart of <see cref="UtcDateTimeConverter"/>.</summary>
 internal sealed class NullableUtcDateTimeConverter() : ValueConverter<DateTime?, DateTime?>(
-    v => v.HasValue ? (v.Value.Kind == DateTimeKind.Utc ? v.Value : v.Value.ToUniversalTime()) : v,
+    v => v.HasValue ? UtcDateTimeConverter.ToUtc(v.Value) : v,
     v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);

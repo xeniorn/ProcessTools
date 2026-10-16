@@ -75,6 +75,9 @@ public class PlatformTests
         Assert.True(me.Values[ProcessMetric.CpuSeconds] >= 0);
         Assert.True(me.Values[ProcessMetric.HandleCount] > 0);
         Assert.NotNull(me.Info.StartTimeUtc);
+        Assert.Equal(DateTimeKind.Utc, me.Info.StartTimeUtc!.Value.Kind);
+        // the start time is the real instant: after the machine's process list could not have been older than this test run's host
+        Assert.InRange(me.Info.StartTimeUtc.Value, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow);
         Assert.Equal(Process.GetCurrentProcess().ProcessName, me.Info.Name);
         Assert.NotNull(me.Info.Path);
     }
@@ -113,6 +116,17 @@ public class PlatformTests
         else
             Assert.True(exited.ExitCode is null or 7);
         Assert.NotEmpty(sink.Reports);
+
+        // every time the tracker hands out is UTC, and close to now
+        Assert.Equal(DateTimeKind.Utc, exited.ObservedAtUtc.Kind);
+        Assert.Equal(DateTimeKind.Utc, exited.Identity.StartTimeUtc.Kind);
+        Assert.InRange(exited.ObservedAtUtc, DateTime.UtcNow.AddMinutes(-2), DateTime.UtcNow.AddSeconds(5));
+        if (exited.ExitedAtUtc is { } exitTime)
+        {
+            Assert.Equal(DateTimeKind.Utc, exitTime.Kind);
+            Assert.InRange(exitTime, DateTime.UtcNow.AddMinutes(-2), DateTime.UtcNow.AddSeconds(5));
+        }
+        Assert.All(sink.Reports, r => Assert.Equal(DateTimeKind.Utc, r.FirstSampleUtc.Kind));
     }
 
     private static Process StartChild(int seconds, int exitCode)

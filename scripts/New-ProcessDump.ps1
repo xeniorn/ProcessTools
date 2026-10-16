@@ -31,7 +31,7 @@ if ($PSCmdlet.ParameterSetName -eq 'ByName') {
     $Id = $found[0].Id
 }
 $process = Get-Process -Id $Id
-if (-not $OutFile) { $OutFile = Join-Path $OutDir ('{0}_{1}_{2:yyyyMMdd_HHmmss}.dmp' -f $process.ProcessName, $Id, (Get-Date)) }
+if (-not $OutFile) { $OutFile = Join-Path $OutDir ('{0}_{1}_{2:yyyyMMdd_HHmmss}Z.dmp' -f $process.ProcessName, $Id, (Get-Date).ToUniversalTime()) }
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent ([IO.Path]::GetFullPath($OutFile))) | Out-Null
 
 Add-Type -TypeDefinition @'

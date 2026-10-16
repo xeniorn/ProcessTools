@@ -1,7 +1,14 @@
 # Publishes both packages to nuget.org when a version tag (vX.Y.Z) is pushed. Publishing is irreversible (a version number
 # is burned even if the package is unlisted), so it happens here, from a tag, and never from a developer machine.
 #
-# Needs the repository secret NUGET_API_KEY: a nuget.org API key limited to the Xeniorn.ProcessTools* packages.
+# No long-lived API key: this uses NuGet Trusted Publishing. GitHub issues a short-lived OIDC token for this workflow run,
+# nuget.org checks it against a trusted publishing policy and returns an API key that is valid for one hour.
+#
+# One-time setup on nuget.org (Account > Trusted Publishing > add a policy):
+#   Repository Owner: xeniorn      Repository: ProcessTools      Workflow File: release.yml      Environment: (empty)
+#   Scopes: allow publishing new packages and new versions, for the glob Xeniorn.ProcessTools*
+# One-time setup on GitHub: a repository secret NUGET_USER holding the nuget.org username (the profile name, not the e-mail).
+# (A policy for a private repository is only temporarily active until the first successful publish; this repository is public.)
 
 name: release
 
@@ -31,6 +38,9 @@ jobs:
   publish:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # lets this job request the GitHub OIDC token that NuGet/login exchanges for an API key
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,5 +55,11 @@ jobs:
           for f in artifacts/*.nupkg; do
             case "$f" in *"${GITHUB_REF_NAME#v}.nupkg") ;; *) echo "$f does not match tag $GITHUB_REF_NAME" >&2; exit 1 ;; esac
           done
+      # last step before the push: the key it returns expires after one hour
+      - name: NuGet login (OIDC to a short-lived API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
       - name: Push to nuget.org
-        run: dotnet nuget push "artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate
+        run: dotnet nuget push "artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --skip-duplicate

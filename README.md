@@ -169,7 +169,7 @@ PowerShell 7+**, on Windows and Linux, and use the same metric and aggregation n
 - **A failing sink never stops the monitoring**: the event is logged and dropped.
 - **Exit codes**: Windows keeps its own handle on a process from the moment tracking starts, so the exit code is available after
   the process is gone. On Linux only a parent can read an exit code, so it is null for processes you did not start.
-- All times are UTC.
+- All times are UTC (`...Utc` names, `DateTimeKind.Utc`, UTC text in SQLite, `Z` in file names and script output). A value of unspecified kind arriving at the database is taken to be UTC, a local one is converted.
 
 ## Build, test, release
 
@@ -179,7 +179,8 @@ dotnet test  ProcessTools.slnx
 ```
 
 Versions come from git tags (`vX.Y.Z`, MinVer). A tag push builds, tests on Windows and Linux, and publishes both packages to
-nuget.org from CI (`.github/workflows/release.yml`); nothing is ever pushed from a developer machine.
+nuget.org from CI (`.github/workflows/release.yml`) with **NuGet Trusted Publishing** (GitHub OIDC; no long-lived API key). One-time setup
+is described at the top of the workflow file. Nothing is ever pushed from a developer machine.
 
 ## License
 
