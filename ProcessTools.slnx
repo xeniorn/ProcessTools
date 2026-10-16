@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Xeniorn.ProcessTools/Xeniorn.ProcessTools.csproj" />
+    <Project Path="src/Xeniorn.ProcessTools.Persistence.Sqlite/Xeniorn.ProcessTools.Persistence.Sqlite.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/Xeniorn.ProcessTools.Test/Xeniorn.ProcessTools.Test.csproj" />
+  </Folder>
+</Solution>

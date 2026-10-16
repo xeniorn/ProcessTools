@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\CSharpConventions.props" />
+  <Import Project="..\..\Packaging.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>Xeniorn.ProcessTools.Persistence.Sqlite</PackageId>
+    <Description>SQLite storage for Xeniorn.ProcessTools: an EF Core DbContext designed to be inherited and extended, entities for tracked processes and per-period metric summaries (numeric columns plus packed raw samples), and a tracking sink that writes to it.</Description>
+    <PackageTags>process;monitoring;sqlite;entityframeworkcore;metrics</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Xeniorn.ProcessTools\Xeniorn.ProcessTools.csproj" />
+  </ItemGroup>
+
+</Project>

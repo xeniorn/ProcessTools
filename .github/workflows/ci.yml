@@ -1,0 +1,28 @@
+# Build and test on every push and pull request, on Windows and Linux: the library is OS agnostic, so both are exercised.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # MinVer needs the tags
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet build ProcessTools.slnx -c Release
+      - run: dotnet test ProcessTools.slnx -c Release --no-build

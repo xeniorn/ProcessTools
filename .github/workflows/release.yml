@@ -1,0 +1,49 @@
+# Publishes both packages to nuget.org when a version tag (vX.Y.Z) is pushed. Publishing is irreversible (a version number
+# is burned even if the package is unlisted), so it happens here, from a tag, and never from a developer machine.
+#
+# Needs the repository secret NUGET_API_KEY: a nuget.org API key limited to the Xeniorn.ProcessTools* packages.
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet test ProcessTools.slnx -c Release
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pack
+        run: dotnet pack ProcessTools.slnx -c Release -o artifacts /p:ContinuousIntegrationBuild=true
+      - name: Check that the package version matches the tag
+        run: |
+          for f in artifacts/*.nupkg; do
+            case "$f" in *"${GITHUB_REF_NAME#v}.nupkg") ;; *) echo "$f does not match tag $GITHUB_REF_NAME" >&2; exit 1 ;; esac
+          done
+      - name: Push to nuget.org
+        run: dotnet nuget push "artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "${{ secrets.NUGET_API_KEY }}" --skip-duplicate

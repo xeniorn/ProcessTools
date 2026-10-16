@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\CSharpConventions.props" />
+  <Import Project="..\..\Packaging.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>Xeniorn.ProcessTools</PackageId>
+    <Description>Cross-platform (Windows, Linux) process monitoring: select processes by PID, name, path, service or ancestry, sample chosen metrics at a fixed rate, and receive per-period min / mean / median / max / sd / rms (optionally with the raw samples) plus start and exit events.</Description>
+    <PackageTags>process;monitoring;memory;cpu;metrics;windows;linux;diagnostics</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Xeniorn.ProcessTools.Test" />
+  </ItemGroup>
+
+</Project>

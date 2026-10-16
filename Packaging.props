@@ -1,0 +1,40 @@
+<Project>
+
+	<!--
+	    Shared packaging setup for every project in this repository that ships a NuGet package to nuget.org.
+
+	    Imported explicitly by each packable csproj (not Directory.Build.props), so a project states its heritage on
+	    its own face. A csproj keeps only what is genuinely its own: PackageId, Description, PackageTags and its
+	    target framework. The version comes from the git tag via MinVer (see CSharpConventions.props).
+
+	    Public registry rules: nothing here pushes. Publishing to nuget.org is irreversible, so it is done by CI
+	    from a tag (.github/workflows/release.yml), never from a developer machine.
+	-->
+
+	<PropertyGroup>
+		<Authors>Juraj Ahel</Authors>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<RepositoryUrl>https://github.com/xeniorn/ProcessTools</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageProjectUrl>https://github.com/xeniorn/ProcessTools</PackageProjectUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<!-- missing XML docs are not a build error, but every public member is expected to have one -->
+		<NoWarn>$(NoWarn);CS1591</NoWarn>
+		<EmbedAllSources>true</EmbedAllSources>
+		<DebugType>embedded</DebugType>
+		<Deterministic>true</Deterministic>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+	</PropertyGroup>
+
+	<!-- CI-marked build: reproducible from the tag (normalises source paths; breaks local debugging, so CI only). -->
+	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+	</ItemGroup>
+
+</Project>
